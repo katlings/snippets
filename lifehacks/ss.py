@@ -39,22 +39,22 @@ blacklist = [
     ('Eric', 'Katie'),
 ]
 
-constraints = {}
+mutual_blacklist = {}
 
 for a, b in blacklist:
-    if not a in constraints:
-        constraints[a] = []
-    if not b in constraints:
-        constraints[b] = []
-    constraints[a].append(b)
-    constraints[b].append(a)
+    if not a in mutual_blacklist:
+        mutual_blacklist[a] = []
+    if not b in mutual_blacklist:
+        mutual_blacklist[b] = []
+    mutual_blacklist[a].append(b)
+    mutual_blacklist[b].append(a)
 
 
-def check(giver, givee, other_givees):
+def check(giver, givee, other_givees, constraints):
     return giver != givee and givee not in other_givees and givee not in constraints.get(giver, [])
 
 
-def ss(n, givers):
+def ss(n, givers, constraints):
     givees = givers * n
     random.shuffle(givees)
     m = {}
@@ -73,7 +73,7 @@ def ss(n, givers):
             # at huge scale so whatever.
             tally = 0
 
-            while not check(giver, givee, m[giver]):
+            while not check(giver, givee, m[giver], constraints):
                 if tally > len(givees):
                     # We've tried every givee that's left and none of them work
                     return None
@@ -96,10 +96,10 @@ def run():
         print "At least %d people must be participating to exchange %d gifts" % (args.num_gifts + 1, args.num_gifts)
         return
 
-    answer = ss(args.num_gifts, args.players)
+    answer = ss(args.num_gifts, args.players, mutual_blacklist)
     while not answer:  # i.e. no solution was returned
         print "oops; rerunning"
-        answer = ss(args.num_gifts, args.players)
+        answer = ss(args.num_gifts, args.players, mutual_blacklist)
 
     print answer
 
