@@ -6,6 +6,7 @@ credentials, make a new playlist and add each song to it.
 """
 
 from functools import wraps
+import re
 
 import argparse
 import simplejson as json
@@ -66,7 +67,7 @@ class PlaylistMaker(object):
             try:
                 song_hits = result.get('song_hits', [])
                 if strict_match:
-                    hits = [x['track'] for x in song_hits if x['track']['title'].lower() == song.lower()]
+                    hits = [x['track'] for x in song_hits if re.sub(r'[^a-z ]+', '', x['track']['title'].lower()) == song.lower()]
                     hit = hits[0]
                 else:
                     hit = song_hits[0]['track']
@@ -96,7 +97,7 @@ class PlaylistMaker(object):
             print 'Not adding {} songs to playlist'.format(len(song_ids))
 
     def sentence_to_song_ids(self, sentence):
-        result = self.words_to_song_ids([w.lower() for w in sentence.split()])
+        result = self.words_to_song_ids([re.sub(r'[^a-z ]+', '', w.lower()) for w in sentence.split()])
         if not result:
             print 'Could not find a song arrangement for sentence: {}'.format(sentence)
         return result
