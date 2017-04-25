@@ -44,9 +44,10 @@ def memoize(fn):
 
 
 class PlaylistMaker(object):
-    def __init__(self, dry_run=False):
+    def __init__(self, dry_run=False, verbose=False):
         self.api = Mobileclient()
         self.live = not dry_run
+        self.verbose = verbose
 
         with open('creds.json') as f:
             creds = json.loads(f.read())
@@ -54,7 +55,7 @@ class PlaylistMaker(object):
         self.logged_in = self.api.login(creds['username'], creds['password'], Mobileclient.FROM_MAC_ADDRESS)
 
     def make_playlist(self, name):
-        return self.api.create_playlist(name, public=True) if self.live else "dry-run-no-playlist"
+        return self.api.create_playlist(name, public=True) if self.live else 'dry-run-no-playlist'
 
     def find_song_ids(self, songs, strict_match=False):
         song_ids = []
@@ -70,68 +71,80 @@ class PlaylistMaker(object):
                 else:
                     hit = song_hits[0]['track']
                 song_ids.append(hit['storeId'])
-                print "Adding: ", hit['title'], "-", hit['artist']
+
+                if self.verbose:
+                    print 'Adding: ', hit['title'], '-', hit['artist']
             except IndexError, KeyError:
                 not_found_songs.append(song)
-                print "Could not find a result for: ", song
+                if self.verbose:
+                    print 'Could not find a result for: ', song
                 return []
 
-        if not_found_songs:
+        if self.verbose and not_found_songs:
             print 'Songs not found:'
             print '\n'.join(not_found_songs)
 
         return song_ids
 
     def populate_playlist(self, playlist_id, song_ids):
-        if self.live:
+        if self.live and song_ids:
             self.api.add_songs_to_playlist(playlist_id, song_ids)
-            print "Added {} songs to playlist".format(len(song_ids))
+            print 'Added {} songs to playlist'.format(len(song_ids))
+        elif not song_ids:
+            print 'No songs to add to playlist'
         else:
-            print "Not adding {} songs to playlist".format(len(song_ids))
+            print 'Not adding {} songs to playlist'.format(len(song_ids))
 
     def sentence_to_song_ids(self, sentence):
-        return self.words_to_song_ids([w.lower() for w in sentence.split()])
+        result = self.words_to_song_ids([w.lower() for w in sentence.split()])
+        if not result:
+            print 'Could not find a song arrangement for sentence: {}'.format(sentence)
+        return result
 
     @memoize
     def words_to_song_ids(self, words):
         def song_exists(title):
             return self.find_song_ids([title], strict_match=True)
 
-        use_or_lose = []
-        for i, word in enumerate(words):
-            use_or_lose.append(word)
-            song_ids = song_exists(' '.join(use_or_lose))
-            if song_ids:
-#                print "found a song called {}".format(" ".join(use_or_lose))
+        if words == []:
+            return words
 
-                if len(use_or_lose) == len(words):
-                    return song_ids
-                else:
-                    results = self.words_to_song_ids(words[i+1:])
-                    if results is None:
-                        return None
-                    return song_ids + self.words_to_song_ids(words[i+1:])
+        for i in xrange(len(words), 0, -1):
+            temp_sentence = ' '.join(words[:i])
 
+            song_id = song_exists(temp_sentence)
+
+            if song_id:
+                rest = self.words_to_song_ids(words[i:])
+
+                if rest is not None:
+                    return song_id + rest
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Make a playlist and populate with songs. Store credentials in creds.json with format {"username": username, "password": password}')
-    parser.add_argument('--filename', '-f', required=True, help='Text file full of search terms. One song per line will be added to the playlist')
+    parser = argparse.ArgumentParser(description="Make a playlist and populate with songs. Store credentials in creds.json with format {'username': username, 'password': password}")
+    parser.add_argument('--filename', '-f', help='Text file full of search terms. One song per line will be added to the playlist')
     parser.add_argument('--name', '-n', help='Name of the playlist. Defaults to the filename')
+    parser.add_argument('--sentence', '-s', help='A sentence to write out using song names')
     parser.add_argument('--dry-run', '-d', action='store_true', help='Just print search results; don\'t actually create a playlist or add songs to it')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Print search information')
     args = parser.parse_args()
 
     playlist_name = args.name or args.filename
 
-    with open(args.filename) as f:
-        songartists = f.readlines()
-
-    pm = PlaylistMaker(args.dry_run)
+    pm = PlaylistMaker(args.dry_run, args.verbose)
     pid = pm.make_playlist(playlist_name)
-    sids = pm.find_song_ids(songartists)
+
+    if args.filename:
+        with open(args.filename) as f:
+            songartists = f.readlines()
+        sids = pm.find_song_ids(songartists)
+    elif args.sentence:
+        sids = pm.sentence_to_song_ids(args.sentence)
+
     pm.populate_playlist(pid, sids)
     pm.api.logout()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
