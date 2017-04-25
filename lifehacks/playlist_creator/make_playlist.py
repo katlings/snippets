@@ -82,7 +82,6 @@ class PlaylistMaker(object):
                 not_found_songs.append(song)
                 if self.verbose:
                     print 'Could not find a result for: ', song
-                return []
 
         if self.verbose and not_found_songs:
             print 'Songs not found:'
