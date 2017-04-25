@@ -56,7 +56,10 @@ class PlaylistMaker(object):
         self.logged_in = self.api.login(creds['username'], creds['password'], Mobileclient.FROM_MAC_ADDRESS)
 
     def make_playlist(self, name):
-        return self.api.create_playlist(name, public=True) if self.live else 'dry-run-no-playlist'
+        pid = self.api.create_playlist(name, public=True) if self.live else 'dry-run-no-playlist'
+        if self.verbose:
+            print 'Created playlist with id: {}'.format(pid)
+        return pid
 
     def find_song_ids(self, songs, strict_match=False):
         song_ids = []
@@ -123,18 +126,23 @@ class PlaylistMaker(object):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Make a playlist and populate with songs. Store credentials in creds.json with format {'username': username, 'password': password}")
+    parser = argparse.ArgumentParser(description='Make a playlist and populate with songs. Store credentials in creds.json with format {"username": username, "password": password}')
     parser.add_argument('--filename', '-f', help='Text file full of search terms. One song per line will be added to the playlist')
     parser.add_argument('--name', '-n', help='Name of the playlist. Defaults to the filename')
     parser.add_argument('--sentence', '-s', help='A sentence to write out using song names')
-    parser.add_argument('--dry-run', '-d', action='store_true', help='Just print search results; don\'t actually create a playlist or add songs to it')
+    parser.add_argument('--playlist-id', '-p', help='Use this playlist (by id) instead of creating a new one')
+    parser.add_argument('--dry-run', '-d', action='store_true', help="Just print search results; don't actually create a playlist or add songs to it")
     parser.add_argument('--verbose', '-v', action='store_true', help='Print search information')
     args = parser.parse_args()
 
     playlist_name = args.name or args.filename
 
     pm = PlaylistMaker(args.dry_run, args.verbose)
-    pid = pm.make_playlist(playlist_name)
+
+    if args.playlist_id:
+        pid = args.playlist_id
+    else:
+        pid = pm.make_playlist(playlist_name)
 
     if args.filename:
         with open(args.filename) as f:
