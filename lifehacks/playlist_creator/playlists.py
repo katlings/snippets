@@ -8,7 +8,7 @@ credentials, make a new playlist and add each song to it.
 from functools import wraps
 import re
 
-import argparse
+import click
 import simplejson as json
 
 from gmusicapi import Mobileclient
@@ -44,11 +44,16 @@ def memoize(fn):
     return foo
 
 
+def alphanum(s):
+    return re.sub(r'[^a-z ]+', '', s.lower())
+
+
 class PlaylistMaker(object):
-    def __init__(self, dry_run=False, verbose=False):
+    def __init__(self, dry_run=False, verbose=0):
         self.api = Mobileclient()
         self.live = not dry_run
         self.verbose = verbose
+        self.playlists = None
 
         with open('creds.json') as f:
             creds = json.loads(f.read())
@@ -70,18 +75,19 @@ class PlaylistMaker(object):
             try:
                 song_hits = result.get('song_hits', [])
                 if strict_match:
-                    hits = [x['track'] for x in song_hits if re.sub(r'[^a-z ]+', '', x['track']['title'].lower()) == song.lower()]
+                    hits = [x['track'] for x in song_hits if alphanum(x['track']['title']) == alphanum(song)]
                     hit = hits[0]
                 else:
                     hit = song_hits[0]['track']
                 song_ids.append(hit['storeId'])
 
-                if self.verbose:
+                if self.verbose > 1:
                     print 'Adding: ', hit['title'], '-', hit['artist']
             except IndexError, KeyError:
                 not_found_songs.append(song)
                 if self.verbose:
-                    print 'Could not find a result for: ', song
+                    print 'Could not find a result for:', song
+                return []
 
         if self.verbose and not_found_songs:
             print 'Songs not found:'
@@ -99,7 +105,7 @@ class PlaylistMaker(object):
             print 'Not adding {} songs to playlist'.format(len(song_ids))
 
     def sentence_to_song_ids(self, sentence):
-        result = self.words_to_song_ids([re.sub(r'[^a-z ]+', '', w.lower()) for w in sentence.split()])
+        result = self.words_to_song_ids([alphanum(w) for w in sentence.split()])
         if not result:
             print 'Could not find a song arrangement for sentence: {}'.format(sentence)
         return result
@@ -123,36 +129,68 @@ class PlaylistMaker(object):
                 if rest is not None:
                     return song_id + rest
 
+    def search_playlists(self, s):
+        results = []
 
-def main():
-    parser = argparse.ArgumentParser(description='Make a playlist and populate with songs. Store credentials in creds.json with format {"username": username, "password": password}')
-    parser.add_argument('--filename', '-f', help='Text file full of search terms. One song per line will be added to the playlist')
-    parser.add_argument('--name', '-n', help='Name of the playlist. Defaults to the filename')
-    parser.add_argument('--sentence', '-s', help='A sentence to write out using song names')
-    parser.add_argument('--playlist-id', '-p', help='Use this playlist (by id) instead of creating a new one')
-    parser.add_argument('--dry-run', '-d', action='store_true', help="Just print search results; don't actually create a playlist or add songs to it")
-    parser.add_argument('--verbose', '-v', action='store_true', help='Print search information')
-    args = parser.parse_args()
+        if self.playlists is None:
+            self.playlists = self.api.get_all_user_playlist_contents()
 
-    playlist_name = args.name or args.filename
+        for playlist in self.playlists:
+            for track in playlist.get('tracks', []):
+                track_info = track.get('track', {})
+                for info in track_info.values():
+                    if isinstance(info, basestring):
+                        if alphanum(s) in alphanum(info):
+                            results.append(playlist['name'])
+        return set(results)
 
-    pm = PlaylistMaker(args.dry_run, args.verbose)
 
-    if args.playlist_id:
-        pid = args.playlist_id
-    else:
-        pid = pm.make_playlist(playlist_name)
+@click.group()
+@click.option('--dry-run', '-d', is_flag=True, help='Just print search results; don\'t actually create a playlist or add songs to it')
+@click.option('--verbose', '-v', count=True, help='Print search information')
+@click.pass_context
+def main(ctx, dry_run, verbose):
+    #   parser = argparse.ArgumentParser(description="Make a playlist and populate with songs. Store credentials in creds.json with format {'username': username, 'password': password}")
+    #   args = parser.parse_args()
+    ctx.obj['PlaylistMaker'] = PlaylistMaker(dry_run, verbose)
 
-    if args.filename:
-        with open(args.filename) as f:
+
+@main.command()
+@click.option('--filename', '-f', help='Text file full of search terms. One song per line will be added to the playlist')
+@click.option('--name', '-n', help='Name of the playlist. Defaults to the filename')
+@click.option('--playlist-id', '-p', help='Use this playlist (by id) instead of creating a new one')
+@click.option('--sentence', '-s', help='A sentence to write out using song names')
+@click.pass_context
+def create(ctx, filename, name, playlist_id, sentence):
+    pm = ctx.obj['PlaylistMaker']
+    playlist_name = name or filename
+
+    if playlist_id is None:
+        playlist_id = pm.make_playlist(playlist_name)
+
+    if filename:
+        with open(filename) as f:
             songartists = f.readlines()
         sids = pm.find_song_ids(songartists)
-    elif args.sentence:
-        sids = pm.sentence_to_song_ids(args.sentence)
+    elif sentence:
+        sids = pm.sentence_to_song_ids(sentence)
+    else:
+        click.echo('Must provide source for playlist (filename or sentence)')
+        return 1
 
-    pm.populate_playlist(pid, sids)
+    pm.populate_playlist(playlist_id, sids)
     pm.api.logout()
 
 
+@main.command()
+@click.argument('search-term')
+@click.pass_context
+def search(ctx, search_term):
+    pm = ctx.obj['PlaylistMaker']
+    results = pm.search_playlists(search_term)
+    for result in results:
+        click.echo(result)
+
+
 if __name__ == '__main__':
-    main()
+    main(obj={})
