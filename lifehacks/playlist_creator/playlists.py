@@ -85,7 +85,7 @@ class PlaylistMaker(object):
                     print 'Adding: ', hit['title'], '-', hit['artist']
             except IndexError, KeyError:
                 not_found_songs.append(song)
-                if self.verbose:
+                if self.verbose > 1:
                     print 'Could not find a result for:', song
                 return []
 
