@@ -45,7 +45,7 @@ def memoize(fn):
 
 
 def alphanum(s):
-    return re.sub(r'[^a-z ]+', '', s.lower())
+    return re.sub(r'[^a-z]+', '', s.lower())
 
 
 class PlaylistMaker(object):
@@ -63,7 +63,7 @@ class PlaylistMaker(object):
     def make_playlist(self, name):
         pid = self.api.create_playlist(name, public=True) if self.live else 'dry-run-no-playlist'
         if self.verbose:
-            print 'Created playlist with id: {}'.format(pid)
+            print('Created playlist with id: {}'.format(pid))
         return pid
 
     def find_song_ids(self, songs, strict_match=False):
@@ -82,32 +82,32 @@ class PlaylistMaker(object):
                 song_ids.append(hit['storeId'])
 
                 if self.verbose > 1:
-                    print 'Adding: ', hit['title'], '-', hit['artist']
-            except IndexError, KeyError:
+                    print('Adding: ', hit['title'], '-', hit['artist'])
+            except (IndexError, KeyError):
                 not_found_songs.append(song)
                 if self.verbose > 1:
-                    print 'Could not find a result for:', song
+                    print('Could not find a result for:', song)
                 return []
 
         if self.verbose and not_found_songs:
-            print 'Songs not found:'
-            print '\n'.join(not_found_songs)
+            print('Songs not found:')
+            print('\n'.join(not_found_songs))
 
         return song_ids
 
     def populate_playlist(self, playlist_id, song_ids):
         if self.live and song_ids:
             self.api.add_songs_to_playlist(playlist_id, song_ids)
-            print 'Added {} songs to playlist'.format(len(song_ids))
+            print('Added {} songs to playlist'.format(len(song_ids)))
         elif not song_ids:
-            print 'No songs to add to playlist'
+            print('No songs to add to playlist')
         else:
-            print 'Not adding {} songs to playlist'.format(len(song_ids))
+            print('Not adding {} songs to playlist'.format(len(song_ids)))
 
     def sentence_to_song_ids(self, sentence):
         result = self.words_to_song_ids([alphanum(w) for w in sentence.split()])
         if not result:
-            print 'Could not find a song arrangement for sentence: {}'.format(sentence)
+            print('Could not find a song arrangement for sentence: {}'.format(sentence))
         return result
 
     @memoize
@@ -139,7 +139,7 @@ class PlaylistMaker(object):
             for track in playlist.get('tracks', []):
                 track_info = track.get('track', {})
                 for info in track_info.values():
-                    if isinstance(info, basestring):
+                    if isinstance(info, str):
                         if alphanum(s) in alphanum(info):
                             results.append(playlist['name'])
         return set(results)
