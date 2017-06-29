@@ -64,3 +64,6 @@ target/
 
 #Credentials
 creds.json
+
+#Pyenv
+.python-version
