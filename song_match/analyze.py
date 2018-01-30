@@ -28,6 +28,7 @@ def get_syllable_stress(word):
     stresses_options = set()
 
     # special case for e.g. singin', prayin'. a common transcription in written lyrics
+    # does not work on goin' as goin is apparently a word
     if not word in d and word.endswith('in') and word + 'g' in d:
         word = word + 'g'
 
@@ -36,29 +37,50 @@ def get_syllable_stress(word):
         syllables = count_vowel_groups(word)
         for i in range(2**syllables):
             pattern = format(i, 'b').zfill(syllables)
-            if pattern == '11' or not '11' in pattern:  # filter out two stresses in a row - it's rare!
+            if pattern == '11' or not '11' in pattern:  # filter out two stresses in a row - it's rare at best
                 stresses_options.add(pattern)
     else:
         pronunciations = d[word]
         for p in pronunciations:
-            stress = ''
+            stress = []
             for syllable in p:
-                if '1' in syllable or '2' in syllable:  # for now, ignore 2
-                    stress = stress + '1'
+                if '1' in syllable or '2' in syllable:  # for now, ignore whatever 2 means
+                    stress.append('1')
                 if '0' in syllable:
-                    stress = stress + '0'  # todo: watch for two unstressed in a row
-            stresses_options.add(stress)
+                    stress.append('0')  # todo: watch for two unstressed in a row
+                                        # ^ wtf self, what does this mean
+            stresses_options.add(''.join(stress))
 
     return stresses_options
 
 
-def get_sequence_stress(sequence):
+def fingerprint(word):
+    stresses = get_syllable_stress(word)
+    if not stresses:
+        raise ValueError(f'Found no options for word {word}')
+    if len(stresses) == 1:
+        return stresses.pop()
+    syllables = len(list(stresses)[0])
+    if not all(len(s) == syllables for s in stresses):
+        print('well crud we have to deal with multiple syllables here')
+        return stresses.pop()  # lol pick one. TODO
+    fp = []
+    for i in range(syllables):
+        if all(s[i] == '1' for s in stresses):
+            fp.append('1')
+        elif all(s[i] == '0' for s in stresses):
+            fp.append('0')
+        else:
+            fp.append('x')
+    return ''.join(fp)
+
+
+def get_sequence_fingerprint(sequence):
     words = sequence.split()
-    stresses = ['']
+    fps = []
     for word in words:
-        word_stresses = get_syllable_stress(word)
-        stresses = [s + ws for s in stresses for ws in word_stresses]
-    return stresses
+        fps.append(fingerprint(word))
+    return ''.join(fps)
 
 
 # hash a bunch of lyrics into sequence stress and use that to fetch similar ones
@@ -67,9 +89,16 @@ def get_sequence_stress(sequence):
 
 
 @click.command()
-@click.argument('sequence')
-def main(sequence):
-    print(get_sequence_stress(sequence))
+@click.argument('filename')
+def main(filename):
+    try:
+        with open(filename) as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        lines = [filename]
+
+    for line in lines:
+        print(get_sequence_fingerprint(line))
 
 
 if __name__ == '__main__':
