@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 
+import re
+
 import click
 from nltk.corpus import cmudict
 d = cmudict.dict()
+
+
+def alphanum(s):
+    return re.sub(r'[^a-z]+', '', s.lower())
 
 
 def count_vowel_groups(word):
@@ -24,16 +30,18 @@ def count_vowel_groups(word):
 
 
 def get_syllable_stress(word):
-    word = word.lower().strip()
+    ends_with_ing = word.endswith("in'")
+    word = alphanum(word)
     stresses_options = set()
 
     # special case for e.g. singin', prayin'. a common transcription in written lyrics
-    # does not work on goin' as goin is apparently a word
-    if not word in d and word.endswith('in') and word + 'g' in d:
+    # does not work on goin' as goin is apparently a word. hope the apostrophe is there
+    if ends_with_ing or (not word in d and word.endswith('in') and word + 'g' in d):
         word = word + 'g'
 
     if not word in d:
         # try all combinations of syllables. why not?
+        # this will just fingerprint to 'xxxx' anyway though.
         syllables = count_vowel_groups(word)
         for i in range(2**syllables):
             pattern = format(i, 'b').zfill(syllables)
@@ -63,6 +71,7 @@ def fingerprint(word):
     syllables = len(list(stresses)[0])
     if not all(len(s) == syllables for s in stresses):
         print('well crud we have to deal with multiple syllables here')
+        print(word, stresses)
         return stresses.pop()  # lol pick one. TODO
     fp = []
     for i in range(syllables):
@@ -83,9 +92,10 @@ def get_sequence_fingerprint(sequence):
     return ''.join(fps)
 
 
-# hash a bunch of lyrics into sequence stress and use that to fetch similar ones
-# potential optimization: mask all generated stresses for the important ones (but have to deal with different lengths)
-# it may work to be generous on one-syllable stressing
+# hash a bunch of lyrics into line/stanza fingerprints and use that to fetch similar ones
+# keyword: similar - some fudge factor will almost certainly be essential
+# it may work to be more generous on one-syllable stressing
+# take out parentheticals in lyric lines?
 
 
 @click.command()
