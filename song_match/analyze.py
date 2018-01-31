@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from functools import wraps
 import logging
 import re
 
@@ -63,6 +64,11 @@ def get_syllable_stress(word):
     return stresses_options
 
 
+# def fingerprint_different_lengths(stresses):
+#     syllables = len(list(stresses)[0])
+#    for syllable in syllables:
+
+
 def fingerprint(word):
     stresses = get_syllable_stress(word)
     if not stresses:
@@ -91,6 +97,34 @@ def get_sequence_fingerprint(sequence):
     for word in words:
         fps.append(fingerprint(word))
     return ''.join(fps)
+
+
+def memoize(f):
+    cache = {}
+
+    @wraps(f)
+    def retrieve_or_store(a, b, *args, **kwargs):
+        if not (a, b) in cache:
+            cache[(a, b)] = f(a, b)
+        return cache[(a, b)]
+
+    return retrieve_or_store
+
+
+@memoize
+def edit_distance(a, b, f=None):
+    if not a:
+        return len(b)
+    if not b:
+        return len(a)
+    if (f and f(a[0], b[0])) or (f is None and a[0] == b[0]):
+        return edit_distance(a[1:], b[1:])
+
+    return 1 + min(edit_distance(a, b[1:]), edit_distance(a[1:], b))
+
+
+def syllables_match(a, b):
+    return a == 'x' or b == 'x' or a == b
 
 
 # hash a bunch of lyrics into line/stanza fingerprints and use that to fetch similar ones
