@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import logging
 import re
 
 import click
@@ -70,8 +71,8 @@ def fingerprint(word):
         return stresses.pop()
     syllables = len(list(stresses)[0])
     if not all(len(s) == syllables for s in stresses):
-        print('well crud we have to deal with multiple syllables here')
-        print(word, stresses)
+        logging.debug('well crud we have to deal with multiple syllables here')
+        logging.debug('%s, %s', word, stresses)
         return stresses.pop()  # lol pick one. TODO
     fp = []
     for i in range(syllables):
@@ -99,8 +100,12 @@ def get_sequence_fingerprint(sequence):
 
 
 @click.command()
+@click.option('--verbose', '-v', count=True, help='Print debug information')
 @click.argument('filename')
-def main(filename):
+def main(verbose, filename):
+    if verbose >= 1:
+        logging.basicConfig(level=logging.DEBUG)
+
     try:
         with open(filename) as f:
             lines = f.readlines()
