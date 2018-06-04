@@ -45,7 +45,7 @@ def memoize(fn):
 
 
 def alphanum(s):
-    return re.sub(r'[^a-z]+', '', s.lower())
+    return re.sub(r'[^a-z0-9]+', '', s.lower())
 
 
 class PlaylistMaker(object):
@@ -136,12 +136,14 @@ class PlaylistMaker(object):
             self.playlists = self.api.get_all_user_playlist_contents()
 
         for playlist in self.playlists:
-            for track in playlist.get('tracks', []):
+            tracks = playlist.get('tracks', [])
+            for i, track in enumerate(tracks):
                 track_info = track.get('track', {})
                 for info in track_info.values():
                     if isinstance(info, str):
                         if alphanum(s) in alphanum(info):
-                            results.append(playlist['name'])
+                            track_place = '{}/{}'.format(i, len(tracks))
+                            results.append((playlist['name'], track_place))
         return set(results)
 
 
@@ -189,7 +191,7 @@ def search(ctx, search_term):
     pm = ctx.obj['PlaylistMaker']
     results = pm.search_playlists(search_term)
     for result in results:
-        click.echo(result)
+        click.echo(' '.join(result))
 
 
 if __name__ == '__main__':
