@@ -5,6 +5,7 @@ import json
 import re
 
 #import click
+import browsercookie
 from gmusicapi import Mobileclient
 import requests
 import spotipy
@@ -78,6 +79,7 @@ class PlaylistSyncer:
         with open('creds.json') as f:
             self.creds = json.loads(f.read())
 
+        self.cookie_jar = browsercookie.chrome()
         self.gapi = Mobileclient()
         self.glogged_in = self.gapi.login(self.creds['gmusic_username'], self.creds['gmusic_password'], Mobileclient.FROM_MAC_ADDRESS)
         self.spcc = spoauth2.SpotifyClientCredentials(client_id=self.creds['spotify_client_id'], client_secret=self.creds['spotify_client_secret'])
@@ -89,14 +91,13 @@ class PlaylistSyncer:
 
     def force_load_gmusic_playlist(self):
         url = 'https://play.google.com/music/services/loaduserplaylist'
-        params = {'format': 'jsarray',
-                  'xt': self.creds['gmusic_xt']}
+        params = {'format': 'jsarray'}
 
         # TODO: See if there's some way to create this cookie rather than manually setting it
         # Will it expire?
         # A: yes, but only every few months
         # xt, on the other hand
-        response = requests.post(url, params=params, data='[[],["{}"]]'.format(self.creds['gmusic_playlist_id']), headers={'cookie': self.creds['gmusic_cookie']})
+        response = requests.post(url, params=params, data='[[],["{}"]]'.format(self.creds['gmusic_playlist_id']), cookies=self.cookie_jar)
         tracks = response.json()[1][0]
 
         self.gsongs = set()
