@@ -133,6 +133,10 @@ def syllables_match(a, b):
 # take out parentheticals in lyric lines?
 
 
+# build a db of hash: lyric and use to fetch similar lines
+# what about entire stanzas?
+
+
 @click.command()
 @click.option('--verbose', '-v', count=True, help='Print debug information')
 @click.argument('filename')

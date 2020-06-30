@@ -58,7 +58,10 @@ class PlaylistMaker(object):
         with open('creds.json') as f:
             creds = json.loads(f.read())
 
-        self.logged_in = self.api.login(creds['username'], creds['password'], Mobileclient.FROM_MAC_ADDRESS)
+        # This only works if one has followed the directions at
+        # https://unofficial-google-music-api.readthedocs.io/en/latest/reference/mobileclient.html#setup-and-login
+        # to setup Oauth using Mobileclient.perform_oauth()
+        self.api.oauth_login(Mobileclient.FROM_MAC_ADDRESS)
 
     def make_playlist(self, name):
         pid = self.api.create_playlist(name, public=True) if self.live else 'dry-run-no-playlist'
@@ -71,14 +74,16 @@ class PlaylistMaker(object):
         not_found_songs = []
         
         for song in songs:
-            result = self.api.search(song)
+            result = self.api.search(song + ' -live -remix -version')  # do our damnedest to exclude live performances and remixes and generally weird versions
+                                                                       # i'm generally ok with remasters though
             try:
                 song_hits = result.get('song_hits', [])
                 if strict_match:
                     hits = [x['track'] for x in song_hits if alphanum(x['track']['title']) == alphanum(song)]
                     hit = hits[0]
                 else:
-                    hit = song_hits[0]['track']
+                    hits = [x['track'] for x in song_hits if alphanum(x['track']['title'] + x['track']['artist']) == alphanum(song)]  # more trying not to find weird versions
+                    hit = hits[0] if hits else song_hits[0]['track']
                 song_ids.append(hit['storeId'])
 
                 if self.verbose > 1:
@@ -87,7 +92,7 @@ class PlaylistMaker(object):
                 not_found_songs.append(song)
                 if self.verbose > 1:
                     print('Could not find a result for:', song)
-                return []
+                #return []
 
         if self.verbose and not_found_songs:
             print('Songs not found:')

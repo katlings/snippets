@@ -20,7 +20,7 @@ def word_soup(s):
     return sorted(w for w in s.split() if not w.lower() in ('a', 'an', 'the', 'ft', 'feat', 'featuring'))
 
 
-@lru_cache(maxsize=256)
+@lru_cache(maxsize=1048)
 def edit_distance(a, b):
     if not a or not b:
         return len(a) or len(b)
@@ -58,6 +58,10 @@ class Song:
         ot = alphanum(other.title)
         oa = alphanum(other.artist)
 
+        if not all((st, sa, ot, oa)):
+            print(self.title, st, self.artist, sa, other.title, ot, other.artist, oa)
+            return False
+
         # Account for only one artist out of a set being credited and
         # misspellings (e.g. Kesha/Ke$ha). Since both the title and artist have
         # to match, it's probably fine to pick an absolute threshold and not a
@@ -85,37 +89,46 @@ class PlaylistSyncer:
         self.spcc = spoauth2.SpotifyClientCredentials(client_id=self.creds['spotify_client_id'], client_secret=self.creds['spotify_client_secret'])
         self.spapi = spotipy.Spotify(auth=self.spcc.get_access_token())
 
-        self.force_load_gmusic_playlist()
-        self.load_spotify_playlist()
+#        self.force_load_gmusic_playlist()
+#        self.load_spotify_playlist()
 
 
-    def force_load_gmusic_playlist(self):
+    def force_load_gmusic_playlist(self, playlist_id=None):
         url = 'https://play.google.com/music/services/loaduserplaylist'
         params = {'format': 'jsarray'}
+
+        if playlist_id is None:
+            playlist_id = self.creds['gmusic_playlist_id']
 
         # TODO: See if there's some way to create this cookie rather than manually setting it
         # Will it expire?
         # A: yes, but only every few months
         # xt, on the other hand
-        response = requests.post(url, params=params, data='[[],["{}"]]'.format(self.creds['gmusic_playlist_id']), cookies=self.cookie_jar)
+        response = requests.post(url, params=params, data='[[],["{}"]]'.format(playlist_id), cookies=self.cookie_jar)
         tracks = response.json()[1][0]
 
         self.gsongs = set()
         for track in tracks:
             self.gsongs.add(Song(track[1], track[3]))
 
-    def load_spotify_playlist(self):
-        pl = self.spapi.user_playlist(self.creds['spotify_user_id'], self.creds['spotify_playlist_id'])
+    def load_spotify_playlist(self, user_id=None, playlist_id=None):
+        if user_id is None:
+            user_id = self.creds['spotify_user_id']
+        if playlist_id is None:
+            playlist_id = self.creds['spotify_playlist_id']
+        pl = self.spapi.user_playlist(user_id, playlist_id)
         tracks = pl['tracks']
         for track in tracks['items']:
             t = track['track']
-            self.spsongs.add(Song(t['name'], ' & '.join(a['name'] for a in t['artists'])))
+            if t['name']:
+                self.spsongs.add(Song(t['name'], ' & '.join(a['name'] for a in t['artists'])))
 
         while tracks['next']:
             tracks = self.spapi.next(tracks)
             for track in tracks['items']:
                 t = track['track']
-                self.spsongs.add(Song(t['name'], ' & '.join(a['name'] for a in t['artists'])))
+                if t['name']:
+                    self.spsongs.add(Song(t['name'], ' & '.join(a['name'] for a in t['artists'])))
 
     def symmetric_song_difference(self):
         diff = set()
