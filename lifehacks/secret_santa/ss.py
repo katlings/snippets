@@ -9,22 +9,18 @@ import argparse
 import random
 
 
-gifts = 2
+gifts = 1
 peeps = ['Alexa',
          'Ben',
-         'Benfrosh',
          'Bremmy',
+         'Calvin',
          'Chelsea',
-         'Emily',
          'Eric',
          'Janis',
          'John',
-         'Karina',
          'Kate',
          'Kathryn',
-         'Katie',
-         'Kayley',
-         'Rebecca',
+         'Katharina',
          'Ryan',
          'Sandra']
 
@@ -33,10 +29,10 @@ peeps = ['Alexa',
 # whatever reason; maybe they're exchanging gifts independently or maybe they
 # don't know each other well.
 blacklist = [
-    ('Alexa', 'John'),
-    ('Benfrosh', 'Emily'),
+    ('Calvin', 'Janis'),
+    ('Kate', 'Sandra'),
     ('Chelsea', 'Ryan'),
-    ('Eric', 'Katie'),
+    ('Eric', 'Katharina'),
 ]
 
 mutual_blacklist = {}
@@ -93,15 +89,15 @@ def run():
     args = parser.parse_args()
 
     if len(args.players) <= args.num_gifts:
-        print "At least %d people must be participating to exchange %d gifts" % (args.num_gifts + 1, args.num_gifts)
+        print("At least %d people must be participating to exchange %d gifts" % (args.num_gifts + 1, args.num_gifts))
         return
 
     answer = ss(args.num_gifts, args.players, mutual_blacklist)
     while not answer:  # i.e. no solution was returned
-        print "oops; rerunning"
+        print("oops; rerunning")
         answer = ss(args.num_gifts, args.players, mutual_blacklist)
 
-    print answer
+    print(answer)
 
 
 if __name__ == '__main__':
