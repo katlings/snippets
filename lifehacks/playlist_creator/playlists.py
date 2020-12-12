@@ -200,4 +200,5 @@ def search(ctx, search_term):
 
 
 if __name__ == '__main__':
-    main(obj={})
+    obj = {}
+    main(obj=obj)
