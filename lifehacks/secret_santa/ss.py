@@ -13,7 +13,7 @@ import yagmail
 
 gifts = 1
 
-emails = {
+info = {
     'Alexa': 'alexa.keizur@gmail.com',
     'Ben Jones': 'gilgergoggle@gmail.com',
     'Bremmy': 'john.highwind@gmail.com',
@@ -36,28 +36,43 @@ emails = {
 # The following pairs of people should not be assigned to each other for
 # whatever reason; maybe they're exchanging gifts independently or maybe they
 # don't know each other well.
-stoplist = [
+mutual_stoplist = [
     ('Calvin', 'Janis'),
     ('Kate', 'Sandra'),
     ('Chelsea', 'Ryan'),
     ('Eric', 'Katharina'),
     ('John', 'Laura Grace'),
     ('James', 'Jack'),
-    ('James', 'Ben'),
+    ('James', 'Ben Jones'),
     ('James', 'Janis'),
-    ('Jack', 'Ben'),
+    ('Jack', 'Ben Jones'),
     ('Jack', 'Janis'),
 ]
 
-mutual_stoplist = {}
+# populate with last year's assignments to avoid double-punching
+stoplist = {
+    'Alexa': ['Kate'],
+    'Ben Jones': ['Eric'],
+    'Calvin': ['Sandra'],
+    'Chelsea': ['Kathryn'],
+    'Eric': ['Bremmy'],
+    'John': ['Ryan'],
+    'Kate': ['Katharina'],
+    'Kathryn': ['Janis'],
+    'Katharina': ['John'],
+    'Ryan': ['Calvin'],
+    'Sandra': ['Chelsea'],
+    'Janis': ['Ben Jones'],
+    'Bremmy': ['Alexa'],
+}
 
-for a, b in stoplist:
-    if not a in mutual_stoplist:
-        mutual_stoplist[a] = []
-    if not b in mutual_stoplist:
-        mutual_stoplist[b] = []
-    mutual_stoplist[a].append(b)
-    mutual_stoplist[b].append(a)
+for a, b in mutual_stoplist:
+    if not a in stoplist:
+        stoplist[a] = []
+    if not b in stoplist:
+        stoplist[b] = []
+    stoplist[a].append(b)
+    stoplist[b].append(a)
 
 
 def check(giver, givee, other_givees, constraints):
@@ -99,9 +114,9 @@ def ss(n, givers, constraints):
 
 email_text = """Dear {},
 
-Happy Secret Santa 2020! You're giving a gift to {} this year, to be exchanged on January 2, 2021. Price target is $25, give or take. Check Discord for wishlist links and post your own to encourage good behavior!
+Happy Secret Santa 2021! You're giving a gift to {} () this year, to be exchanged on January 9, 2022. Price target is $25, give or take. Check Discord thread for wishlist links and post your own!
 
-Happy holidays and see you in 20-fucking-21,
+Happy holidays,
 Santa's Helper
 """
 
@@ -111,13 +126,13 @@ def send_emails(assigns):
 
     for assign, assignee in assigns.items():
         assignee = assignee[0]
-        giver_email = emails[assign]
+        giver_email, wishlist = info[assign]
 
         body = email_text.format(assign, assignee)
 
         y.send(
             to=giver_email,
-            subject='Friendsmas Secret Santa 2020',
+            subject='Friendsmas Secret Santa 2021',
             contents=body,
         )
 
@@ -126,23 +141,25 @@ def send_emails(assigns):
 def run():
     parser = argparse.ArgumentParser(description='Generate a Secret Santa scenario for the input people')
     parser.add_argument('--num-gifts', '-n', type=int, default=gifts, help='The number of gifts each person should give and receive (default %d)' % gifts)
-    parser.add_argument('players', nargs='*', default=list(emails.keys()), help='The players. Input all names separated by spaces')
+    parser.add_argument('players', nargs='*', default=list(info.keys()), help='The players. Input all names separated by spaces')
     args = parser.parse_args()
 
     if len(args.players) <= args.num_gifts:
         print("At least %d people must be participating to exchange %d gifts" % (args.num_gifts + 1, args.num_gifts))
         return
 
-    answer = ss(args.num_gifts, args.players, mutual_stoplist)
+    answer = ss(args.num_gifts, args.players, stoplist)
     while not answer:  # i.e. no solution was returned
         print("oops; rerunning")
-        answer = ss(args.num_gifts, args.players, mutual_stoplist)
+        answer = ss(args.num_gifts, args.players, stoplist)
 
     print(answer)
 
     go_ahead = input('Proceed to email? ')
     if go_ahead[0] in 'yY':
         send_emails(answer)
+    else:
+        run()
 
 
 if __name__ == '__main__':
