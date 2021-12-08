@@ -8,6 +8,8 @@ participant gives n gifts to other participants and recieves n in return.
 import argparse
 import random
 
+import yagmail
+
 
 gifts = 1
 peeps = ['Alexa',
@@ -24,6 +26,22 @@ peeps = ['Alexa',
          'Ryan',
          'Sandra']
 
+emails = {
+    'Alexa': 'alexa.keizur@gmail.com',
+    'Ben': 'gilgergoggle@gmail.com',
+    'Bremmy': 'john.highwind@gmail.com',
+    'Calvin': 'marvinx03@gmail.com',
+    'Chelsea': 'chelzwa@gmail.com',
+    'Eric': 'eric.alexander.mullen@gmail.com',
+    'Janis': 'ravyn.selene@gmail.com',
+    'John': 'jtgrasel@gmail.com',
+    'Kate': 'kateevans1014@gmail.com',
+    'Kathryn': 'complikated@gmail.com',
+    'Katharina': 'ladyktob@gmail.com',
+    'Ryan': 'rd.bahm@gmail.com',
+    'Sandra': 'sandralspitzer@gmail.com',
+}
+
 
 # The following pairs of people should not be assigned to each other for
 # whatever reason; maybe they're exchanging gifts independently or maybe they
@@ -33,6 +51,7 @@ blacklist = [
     ('Kate', 'Sandra'),
     ('Chelsea', 'Ryan'),
     ('Eric', 'Katharina'),
+    ('John', 'Bremmy'),
 ]
 
 mutual_blacklist = {}
@@ -52,6 +71,7 @@ def check(giver, givee, other_givees, constraints):
 
 def ss(n, givers, constraints):
     givees = givers * n
+    random.shuffle(givees)
     random.shuffle(givees)
     m = {}
 
@@ -82,6 +102,32 @@ def ss(n, givers, constraints):
     return m
 
 
+email_text = """Dear {},
+
+Happy Secret Santa 2020! You're giving a gift to {} this year, to be exchanged on January 2, 2021. Price target is $25, give or take. Check Discord for wishlist links and post your own to encourage good behavior!
+
+Happy holidays and see you in 20-fucking-21,
+Santa's Helper
+"""
+
+
+def send_emails(assigns):
+    y = yagmail.SMTP('complikated@gmail.com')
+
+    for assign, assignee in assigns.items():
+        assignee = assignee[0]
+        giver_email = emails[assign]
+
+        body = email_text.format(assign, assignee)
+
+        y.send(
+            to=giver_email,
+            subject='Friendsmas Secret Santa 2020',
+            contents=body,
+        )
+
+
+
 def run():
     parser = argparse.ArgumentParser(description='Generate a Secret Santa scenario for the input people')
     parser.add_argument('--num-gifts', '-n', type=int, default=gifts, help='The number of gifts each person should give and receive (default %d)' % gifts)
@@ -98,6 +144,10 @@ def run():
         answer = ss(args.num_gifts, args.players, mutual_blacklist)
 
     print(answer)
+
+    go_ahead = input('Proceed to email? ')
+    if go_ahead[0] in 'yY':
+        send_emails(answer)
 
 
 if __name__ == '__main__':
