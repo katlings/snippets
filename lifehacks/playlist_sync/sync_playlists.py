@@ -6,6 +6,7 @@ import re
 
 #import click
 import browsercookie
+from fuzzywuzzy import fuzz
 from gmusicapi import Mobileclient
 import requests
 import spotipy
@@ -58,21 +59,23 @@ class Song:
         ot = alphanum(other.title)
         oa = alphanum(other.artist)
 
-        if not all((st, sa, ot, oa)):
-            print(self.title, st, self.artist, sa, other.title, ot, other.artist, oa)
-            return False
+#       if not all((st, sa, ot, oa)):
+#           print(self.title, st, self.artist, sa, other.title, ot, other.artist, oa)
+#           return False
+
+        return fuzz.partial_ratio(st, ot) > 70 and fuzz.partial_ratio(sa, oa) > 70  # just a guess
 
         # Account for only one artist out of a set being credited and
         # misspellings (e.g. Kesha/Ke$ha). Since both the title and artist have
         # to match, it's probably fine to pick an absolute threshold and not a
         # relative one, but...
-        edpt = edit_distance(st, ot)/max(len(st), len(ot))
-        edpa = edit_distance(sa, oa)/max(len(sa), len(oa))
+#       edpt = edit_distance(st, ot)/max(len(st), len(ot))
+#       edpa = edit_distance(sa, oa)/max(len(sa), len(oa))
 
         # Maybe use word soup to account for artists being listed in different orders
 
-        return (st == ot or st in ot or ot in st or edpt < 0.25) and \
-                (sa == oa or sa in oa or oa in sa or edpa < 0.25)
+#       return (st == ot or st in ot or ot in st or edpt < 0.25) and \
+#               (sa == oa or sa in oa or oa in sa or edpa < 0.25)
 
 
 class PlaylistSyncer:
