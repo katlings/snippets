@@ -12,32 +12,22 @@ import yagmail
 
 
 gifts = 1
-peeps = ['Alexa',
-         'Ben',
-         'Bremmy',
-         'Calvin',
-         'Chelsea',
-         'Eric',
-         'Janis',
-         'John',
-         'Kate',
-         'Kathryn',
-         'Katharina',
-         'Ryan',
-         'Sandra']
 
 emails = {
     'Alexa': 'alexa.keizur@gmail.com',
-    'Ben': 'gilgergoggle@gmail.com',
+    'Ben Jones': 'gilgergoggle@gmail.com',
     'Bremmy': 'john.highwind@gmail.com',
     'Calvin': 'marvinx03@gmail.com',
     'Chelsea': 'chelzwa@gmail.com',
     'Eric': 'eric.alexander.mullen@gmail.com',
+    'Jack': 'jkopakowski@gmail.com',
+    'James': 'james@dogayer.com',
     'Janis': 'ravyn.selene@gmail.com',
     'John': 'jtgrasel@gmail.com',
     'Kate': 'kateevans1014@gmail.com',
     'Kathryn': 'complikated@gmail.com',
     'Katharina': 'ladyktob@gmail.com',
+    'Laura Grace': 'lgbeckerman@gmail.com',
     'Ryan': 'rd.bahm@gmail.com',
     'Sandra': 'sandralspitzer@gmail.com',
 }
@@ -46,23 +36,28 @@ emails = {
 # The following pairs of people should not be assigned to each other for
 # whatever reason; maybe they're exchanging gifts independently or maybe they
 # don't know each other well.
-blacklist = [
+stoplist = [
     ('Calvin', 'Janis'),
     ('Kate', 'Sandra'),
     ('Chelsea', 'Ryan'),
     ('Eric', 'Katharina'),
-    ('John', 'Bremmy'),
+    ('John', 'Laura Grace'),
+    ('James', 'Jack'),
+    ('James', 'Ben'),
+    ('James', 'Janis'),
+    ('Jack', 'Ben'),
+    ('Jack', 'Janis'),
 ]
 
-mutual_blacklist = {}
+mutual_stoplist = {}
 
-for a, b in blacklist:
-    if not a in mutual_blacklist:
-        mutual_blacklist[a] = []
-    if not b in mutual_blacklist:
-        mutual_blacklist[b] = []
-    mutual_blacklist[a].append(b)
-    mutual_blacklist[b].append(a)
+for a, b in stoplist:
+    if not a in mutual_stoplist:
+        mutual_stoplist[a] = []
+    if not b in mutual_stoplist:
+        mutual_stoplist[b] = []
+    mutual_stoplist[a].append(b)
+    mutual_stoplist[b].append(a)
 
 
 def check(giver, givee, other_givees, constraints):
@@ -131,17 +126,17 @@ def send_emails(assigns):
 def run():
     parser = argparse.ArgumentParser(description='Generate a Secret Santa scenario for the input people')
     parser.add_argument('--num-gifts', '-n', type=int, default=gifts, help='The number of gifts each person should give and receive (default %d)' % gifts)
-    parser.add_argument('players', nargs='*', default=peeps, help='The players. Input all names separated by spaces')
+    parser.add_argument('players', nargs='*', default=list(emails.keys()), help='The players. Input all names separated by spaces')
     args = parser.parse_args()
 
     if len(args.players) <= args.num_gifts:
         print("At least %d people must be participating to exchange %d gifts" % (args.num_gifts + 1, args.num_gifts))
         return
 
-    answer = ss(args.num_gifts, args.players, mutual_blacklist)
+    answer = ss(args.num_gifts, args.players, mutual_stoplist)
     while not answer:  # i.e. no solution was returned
         print("oops; rerunning")
-        answer = ss(args.num_gifts, args.players, mutual_blacklist)
+        answer = ss(args.num_gifts, args.players, mutual_stoplist)
 
     print(answer)
 
